@@ -39,8 +39,10 @@ $fileNameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($fileP
 $directory = Split-Path $filePath
 $fullPathWithoutExtension = Join-Path $directory $fileNameWithoutExtension
 $datafilename = $fileNameWithoutExtension+'data.txt'
+$measurmentfilename = $fileNameWithoutExtension+'measurments.txt'
 if (-not($directory -match ".\\$")) {Write-Output "The last character is not a drive." ; $directory = $directory+'\'}
 $global:datafilepath = $directory+$datafilename
+$global:measurmentFilePath = $directory+$measurmentfilename
 #Write-Host 'full path no exxt' $fullPathWithoutExtension
 Write-Host 'directory' $directory
 Write-Host 'file no ext' $fileNameWithoutExtension
@@ -174,7 +176,10 @@ $txtbox.AppendText("`r`nDeviation: $([math]::Round($standardDeviation,2))")
 #start-sleep -Seconds 5
 $opendatafilebutton.text = "Open $global:datafilepath"
 $opendatafilebutton.Visible = $true
-
+# Put all the measurments into an array and output to file for Leo.
+$finalMeasurment = @(   $temptext,
+                        "Deviation: $([math]::Round($standardDeviation,2))")
+Add-Content -Path $global:measurmentFilePath -Value $finalMeasurment
 }
 
 
