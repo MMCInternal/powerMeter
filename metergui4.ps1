@@ -22,7 +22,7 @@ Function getfile{
 param ($result)
 
 $OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
-$OpenFileDialog.InitialDirectory = [Environment]::GetFolderPath('MyDocuments')
+#$OpenFileDialog.InitialDirectory = [Environment]::GetFolderPath('MyDocuments')
 $OpenFileDialog.Filter = "Text files (*.log)|*.log"
 
 if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
@@ -36,10 +36,10 @@ if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 #get filename
 
 $fileNameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($filePath)
-$directory = Split-Path $filePath
+$global:directory = Split-Path $filePath
 $fullPathWithoutExtension = Join-Path $directory $fileNameWithoutExtension
-$datafilename = $fileNameWithoutExtension+'data.txt'
-$measurmentfilename = $fileNameWithoutExtension+'measurments.txt'
+$datafilename = $fileNameWithoutExtension+' data.txt'
+$measurmentfilename = $fileNameWithoutExtension+' measurments.txt'
 if (-not($directory -match ".\\$")) {Write-Output "The last character is not a drive." ; $directory = $directory+'\'}
 $global:datafilepath = $directory+$datafilename
 $global:measurmentFilePath = $directory+$measurmentfilename
@@ -49,7 +49,7 @@ Write-Host 'file no ext' $fileNameWithoutExtension
 write-host $datafilename
 
 $label1.Text = "File Selected to Process:`r`n $filepath"
-$label2.Text = "Data File Created: `r`n $global:datafilepath"
+$label2.Text = "Data File Created: `r`n $directory"
 $txtbox.Text = "Opening $Filepath "#`r`n "# Replaces existing text
 $txtbox.AppendText("datafile $datafilename") # Adds text to the end
 $txtbox.AppendText(" `r`n Please wait")
@@ -66,10 +66,26 @@ Function ParseLogFile{
 #write-host $global:Datafilepath
 $logfile = Get-Content -Path $filepath
 
-if (Test-Path $global:datafilepath) {
-    # Delete the file
-    Remove-Item $global:datafilepath -Force
+#if (Test-Path $global:datafilepath) {
+#    # Delete the file
+#    Remove-Item $global:datafilepath -Force
+#    }
+#foreach ($file in $global:datafilepath) {
+for ($fileIndexCounter = 0; $fileIndexCounter -lt 100; $fileIndexCounter++) {
+    if (Test-Path $datafilepath) {
+        Write-Host "File exists"
+        $datafilename = $filenamewithoutextension + ' data ' + $fileIndexCounter + ' .txt'
+        $global:datafilepath = $directory+$datafilename
+        Write-Host "File exists. Checking next file."
+        #Add-Content -Path $global:datafilepath -Value $finalnumber
     }
+    else {
+        Write-Host "File does not exist Creating new file"
+        Add-Content -Path $global:datafilepath -Value $finalnumber
+        break
+    }
+}
+
 
 $numberArray= @()
 $dataArray =@()
@@ -138,7 +154,7 @@ Add-Content -Path $global:datafilepath -Value $finalnumber
 #reset counters
 $numberarray2.clear() 
 $finalnumber= $null
-      }
+        }
     }
 #call displayinfo function
 Displayinfo
@@ -174,19 +190,30 @@ $txtbox.AppendText("`r`nDeviation: $([math]::Round($standardDeviation,2))")
 
 #turn on button to access data file created
 #start-sleep -Seconds 5
-$opendatafilebutton.text = "Open $global:datafilepath"
+$opendatafilebutton.text = "Open $directory"
 $opendatafilebutton.Visible = $true
 # Put all the measurments into an array and output to file for Leo.
 $finalMeasurment = @(   $temptext,
                         "Deviation: $([math]::Round($standardDeviation,2))")
-Add-Content -Path $global:measurmentFilePath -Value $finalMeasurment
+for ($fileIndexCounter = 0; $fileIndexCounter -lt 100; $fileIndexCounter++) {
+    if (Test-Path $measurmentFilePath) {
+        Write-Host "File exists"
+        $measurmentfilename = $filenamewithoutextension + ' measurments ' + $fileIndexCounter + ' .txt'
+        $global:measurmentFilePath = $directory+$measurmentfilename
+        Write-Host "File exists. Checking next file."
+    }
+    else {
+        Write-Host "File does not exist Creating new file"
+        Add-Content -Path $global:measurmentFilePath -Value $finalMeasurment
+        break
+    }
+}
 }
 
 
 Function Opendatafile {
-write-host 'opendatafile'+ $global:datafilepath
-Start-Process 'notepad.exe' -ArgumentList $global:datafilepath
-
+write-host 'Open data location'+ $directory
+start-process explorer.exe "$directory"
 }
 
 Function Show-Powershell()
