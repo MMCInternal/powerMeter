@@ -17,68 +17,79 @@ public static extern bool ShowWindow(IntPtr hWnd, Int32 nCmdShow);
 #global variables
 $global:filepath = $null
 $global:Datafilepath = $null
+$global:parentDirectory = $null
+$global:i = 0
 #Functions
 Function getfile{
 param ($result)
 
 $OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
-#$OpenFileDialog.InitialDirectory = [Environment]::GetFolderPath('MyDocuments')
+$OpenFileDialog.Multiselect = $true # Enable multiple file selection
 $OpenFileDialog.Filter = "Text files (*.log)|*.log"
 
 if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-    $Filepath = $OpenFileDialog.FileName
-    Write-Output "You selected: $Filepath"
+    $selectedFiles = $OpenFileDialog.FileNames
+    Write-Output "You selected: $($selectedFiles.Count) files"
+    
+    foreach($filePath in $selectedFiles) {
+        Write-Output "Processing: $filePath"
+        
+        #get filename for each file
+        $fileNameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($filePath)
+        $global:directory = Split-Path $filePath
+        $datafilename = $fileNameWithoutExtension+' data.txt'
+        $measurmentfilename = $fileNameWithoutExtension+' measurments.txt'
+        
+        if (-not($directory -match ".\\$")) {
+            Write-Output "The last character is not a drive."
+            $directory = $directory+'\'
+        }
+        
+        # Set data file path to current directory
+        $global:datafilepath = $directory+$datafilename
+        
+        # Set measurement file path one directory up
+        $global:parentDirectory = Split-Path $directory -Parent
+        if (-not($global:parentDirectory -match ".\\$")) {
+            $global:parentDirectory = $global:parentDirectory+'\'
+        }
+        $global:measurmentFilePath = $global:parentDirectory+$measurmentfilename
+
+        Write-Host 'directory' $directory
+        Write-Host 'parent directory' $global:parentDirectory
+        Write-Host 'file no ext' $fileNameWithoutExtension
+        write-host $datafilename
+
+        # Update UI for current file
+        $label1.Text += "File Selected to Process:`r`n $filepath`r`n"
+        $label2.Text = "Data Files Created in: `r`n $directory"
+        $txtbox.AppendText("`r`nProcessing $Filepath")
+        $txtbox.AppendText("`r`nCreating datafile $datafilename")
+        $opendatafilebutton.Visible = $false
+        
+        # Parse each log file
+        ParseLogfile $filePath
+    }
+    
+    $txtbox.AppendText("`r`nCompleted processing all files")
 } else {
-    Write-Output "No file selected."
-    exit
+    Write-Output "No files selected."
+    return
 }
-
-#get filename
-
-$fileNameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($filePath)
-$global:directory = Split-Path $filePath
-#$fullPathWithoutExtension = Join-Path $directory $fileNameWithoutExtension
-$datafilename = $fileNameWithoutExtension+' data.txt'
-$measurmentfilename = $fileNameWithoutExtension+' measurments.txt'
-if (-not($directory -match ".\\$")) {Write-Output "The last character is not a drive." ; $directory = $directory+'\'}
-$global:datafilepath = $directory+$datafilename
-$global:measurmentFilePath = $directory+$measurmentfilename
-
-#Write-Host 'full path no exxt' $fullPathWithoutExtension
-Write-Host 'directory' $directory
-Write-Host 'file no ext' $fileNameWithoutExtension
-write-host $datafilename
-
-$label1.Text = "File Selected to Process:`r`n $filepath"
-$label2.Text = "Data File Created: `r`n $directory"
-$txtbox.Text = "Opening $Filepath "#`r`n "# Replaces existing text
-$txtbox.AppendText("datafile $datafilename") # Adds text to the end
-$txtbox.AppendText(" `r`n Please wait")
-$opendatafilebutton.Visible = $false
-ParseLogfile
-
 
 }
 
 Function ParseLogFile{
+param($currentFilePath)
 
-#write-host $filepath
-#write-host parselogfile $global:datafilepath
-#write-host $global:Datafilepath
-$logfile = Get-Content -Path $filepath
+$logfile = Get-Content -Path $currentFilePath
 
-#if (Test-Path $global:datafilepath) {
-#    # Delete the file
-#    Remove-Item $global:datafilepath -Force
-#    }
-#foreach ($file in $global:datafilepath) {
 for ($fileIndexCounter = 0; $fileIndexCounter -lt 100; $fileIndexCounter++) {
     if (Test-Path $datafilepath) {
         Write-Host "File exists"
         $datafilename = $filenamewithoutextension + ' data ' + $fileIndexCounter + ' .txt'
         $global:datafilepath = $directory+$datafilename
         Write-Host "File exists. Checking next file."
-        #Add-Content -Path $global:datafilepath -Value $finalnumber
     }
     else {
         Write-Host "File does not exist Creating new file"
@@ -199,7 +210,10 @@ for ($fileIndexCounter = 0; $fileIndexCounter -lt 100; $fileIndexCounter++) {
     if (Test-Path $measurmentFilePath) {
         Write-Host "File exists"
         $measurmentfilename = $filenamewithoutextension + ' measurments ' + $fileIndexCounter + ' .txt'
-        $global:measurmentFilePath = $directory+$measurmentfilename
+        if (-not($global:parentDirectory -match ".\\$")) {
+            $global:parentDirectory = $global:parentDirectory+'\'
+        }
+        $global:measurmentFilePath = $global:parentDirectory+$measurmentfilename
         Write-Host "File exists. Checking next file."
     }
     else {
@@ -208,12 +222,16 @@ for ($fileIndexCounter = 0; $fileIndexCounter -lt 100; $fileIndexCounter++) {
         break
     }
 }
+$global:i++
+if ($global:i -eq 4){
+    finalResult
+}
 }
 
 
 Function Opendatafile {
-write-host 'Open data location'+ $directory
-start-process explorer.exe "$directory"
+write-host 'Open data location'+ $global:parentDirectory
+start-process explorer.exe "$global:parentDirectory"
 }
 
 Function Show-Powershell()
@@ -244,6 +262,7 @@ function finalResult{
     $OpenFileDialog.Multiselect = $true
     $OpenFileDialog.Filter = "Text files (*.txt)|*.txt"
     $OpenFileDialog.Title = "Select in order. Off, Short Idle, Long Idle, Sleep."
+    $openFileDialog.InitialDirectory = $global:parentDirectory
 
     if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         # Init Variables
@@ -318,6 +337,8 @@ function finalResult{
             Write-Host "Warning: Need exactly 4 measurement files for total annual energy calculation"
         }
     }
+    start-process explorer.exe "$global:parentDirectory"
+    start-process explorer.exe "$global:testResultFilePath"
 }
 
 function totalAnnualEnergyFormula($value1, $value2, $value3, $value4){
