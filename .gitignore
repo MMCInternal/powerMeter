@@ -1,1 +1,7 @@
-./10632
+*.txt
+*.log
+*.csv
+*.xlsx
+*.xls
+*.doc
+*.docx
