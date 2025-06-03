@@ -293,6 +293,20 @@ function finalResult{
         }
         # Check if 4 measurement files are selected
         if ($measurementIndex -eq 4) {
+            # Add averages in specified order at top of file
+            $averagesLine = "$($global:averages[0])`t$($global:averages[3])`t$($global:averages[2])`t$($global:averages[1])"
+            Set-Content -Path $global:testResultFilePath -Value $averagesLine
+            
+            # Add the rest of the content
+            $content = Get-Content $global:testResultFilePath
+            foreach ($file in $filesChosen) {
+                $fileName = Split-Path $file -Leaf
+                $fileName = $fileName -replace '.txt', ''
+                $index = [array]::IndexOf($filesChosen, $file)
+                $finalResultFile = $fileName + " : " + $global:averages[$index]
+                Add-Content -Path $global:testResultFilePath -Value $finalResultFile
+            }
+
             $totalAnnualEnergy = totalAnnualEnergyFormula $global:averages[0] $global:averages[1] $global:averages[2] $global:averages[3]
             add-content -path $global:testResultFilePath -value "`nTotal Annual Energy Consumption: $totalAnnualEnergy"
             
