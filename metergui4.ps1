@@ -37,7 +37,7 @@ if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 
 $fileNameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($filePath)
 $global:directory = Split-Path $filePath
-$fullPathWithoutExtension = Join-Path $directory $fileNameWithoutExtension
+#$fullPathWithoutExtension = Join-Path $directory $fileNameWithoutExtension
 $datafilename = $fileNameWithoutExtension+' data.txt'
 $measurmentfilename = $fileNameWithoutExtension+' measurments.txt'
 if (-not($directory -match ".\\$")) {Write-Output "The last character is not a drive." ; $directory = $directory+'\'}
@@ -89,7 +89,6 @@ for ($fileIndexCounter = 0; $fileIndexCounter -lt 100; $fileIndexCounter++) {
 
 
 $numberArray= @()
-$dataArray =@()
 #$dave1 = $dave -replace "^..", ""
 $decimalFlag = 0
 $indexcounter= 0
