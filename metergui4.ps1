@@ -17,7 +17,7 @@ public static extern bool ShowWindow(IntPtr hWnd, Int32 nCmdShow);
 #global variables
 $global:filepath = $null
 $global:Datafilepath = $null
-$global:parentDirectory = $null
+$global:directory = $null
 $global:i = 0
 #Functions
 Function getfile{
@@ -39,24 +39,28 @@ if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         $global:directory = Split-Path $filePath
         $datafilename = $fileNameWithoutExtension+' data.txt'
         $measurmentfilename = $fileNameWithoutExtension+' measurments.txt'
+        $global:dataDir = Join-Path -Path $directory -ChildPath "data"
+        if(!(Test-Path $global:dataDir)) {
+            New-Item -ItemType Directory -Path $global:dataDir
+        }
         
         if (-not($directory -match ".\\$")) {
             Write-Output "The last character is not a drive."
             $directory = $directory+'\'
         }
-        
+
         # Set data file path to current directory
-        $global:datafilepath = $directory+$datafilename
+        $global:datafilepath = Join-Path $dataDir $datafilename
         
         # Set measurement file path one directory up
         $global:parentDirectory = Split-Path $directory -Parent
         if (-not($global:parentDirectory -match ".\\$")) {
-            $global:parentDirectory = $global:parentDirectory+'\'
+            $global:parentDirectory = $global:directory+'\'
         }
         $global:measurmentFilePath = $global:parentDirectory+$measurmentfilename
 
         Write-Host 'directory' $directory
-        Write-Host 'parent directory' $global:parentDirectory
+        Write-Host 'parent directory' $global:directory
         Write-Host 'file no ext' $fileNameWithoutExtension
         write-host $datafilename
 
@@ -211,10 +215,10 @@ for ($fileIndexCounter = 0; $fileIndexCounter -lt 100; $fileIndexCounter++) {
     if (Test-Path $measurmentFilePath) {
         Write-Host "File exists"
         $measurmentfilename = $filenamewithoutextension + ' measurments ' + $fileIndexCounter + ' .txt'
-        if (-not($global:parentDirectory -match ".\\$")) {
-            $global:parentDirectory = $global:parentDirectory+'\'
+        if (-not($global:directory -match ".\\$")) {
+            $global:directory = $global:directory+'\'
         }
-        $global:measurmentFilePath = $global:parentDirectory+$measurmentfilename
+        $global:measurmentFilePath = $global:directory+$measurmentfilename
         Write-Host "File exists. Checking next file."
     }
     else {
@@ -231,8 +235,8 @@ if ($global:i -eq 4){
 
 
 Function Opendatafile {
-write-host 'Open data location'+ $global:parentDirectory
-start-process explorer.exe "$global:parentDirectory"
+write-host 'Open data location'+ $global:directory
+start-process explorer.exe "$global:directory"
 }
 
 Function Show-Powershell()
@@ -263,7 +267,7 @@ function finalResult{
     $OpenFileDialog.Multiselect = $true
     $OpenFileDialog.Filter = "Text files (*.txt)|*.txt"
     $OpenFileDialog.Title = "Select in order. Off, Short Idle, Long Idle, Sleep."
-    $openFileDialog.InitialDirectory = $global:parentDirectory
+    $openFileDialog.InitialDirectory = $global:directory
 
     if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         # Init Variables
@@ -272,7 +276,10 @@ function finalResult{
         if (-not($localDirectory -match ".\\$")) {$localDirectory = $localDirectory+'\'}
         write-host "Path to local directory: $localDirectory"
         $testResultfilename = 'testResults.txt'
-        $global:testResultFilePath = $global:parentDirectory+$testResultfilename
+        if (-not($global:directory -match ".\\$")) {
+            $global:directory = $global:directory+'\'
+        }
+        $global:testResultFilePath = $global:directory+$testResultfilename
         $global:averages = @()
         $global:averages = New-Object double[] 4  # Initialize array with 4 elements
         $measurementIndex = 0
@@ -338,9 +345,27 @@ function finalResult{
             Write-Host "Warning: Need exactly 4 measurement files for total annual energy calculation"
         }
     }
-    if ($global:parentDirectory -and $global:testResultFilePath) {
-        start-process explorer.exe "$global:parentDirectory"
-        start-process explorer.exe "$global:testResultFilePath"
+    # Move all .log files to data directory
+    Get-ChildItem -Path $global:directory -Filter "*.log" | ForEach-Object {
+        $destinationPath = Join-Path $global:dataDir $_.Name
+        Move-Item -Path $_.FullName -Destination $destinationPath -Force
+        Write-Host "Moved log file: $($_.Name) to data directory"
+    }
+
+    # Move measurement files to data directory
+    Get-ChildItem -Path $global:directory -Filter "*measurments*.txt" | ForEach-Object {
+        $destinationPath = Join-Path $global:dataDir $_.Name 
+        Move-Item -Path $_.FullName -Destination $destinationPath -Force
+        Write-Host "Moved measurement file: $($_.Name) to data directory"
+    }
+    if ($global:directory -and $global:testResultFilePath) {
+        start-process explorer.exe "$global:directory"
+        if (test-path $global:testResultFilePath) {
+            start-process explorer.exe "$global:testResultFilePath"
+        }
+        else {
+            Write-Host "Warning: Test result file does not exist"
+        }
     }
 }
 
@@ -429,7 +454,7 @@ $finalresultbutton.add_click($finalresultonclick)
 $opendatafilebutton =  New-Object windows.forms.button
 $opendatafilebutton.top = $exitbutton.top; $opendatafilebutton.Left = $GetFilebutton.left - $exitbutton.Width - 10
 $opendatafilebutton.Height = $GetFilebutton.Height; $opendatafilebutton.Width = $GetFilebutton.width 
-$opendatafilebutton.text = "open $($global:parentDirectory)"
+$opendatafilebutton.text = "open $($global:directory)"
 $opendatafilebutton.Visible = $false
 $opendatafilebutton.anchor = "Right"
 $opendatafileonclick = {Opendatafile}
