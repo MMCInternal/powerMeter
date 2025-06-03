@@ -61,7 +61,7 @@ if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         write-host $datafilename
 
         # Update UI for current file
-        $label1.Text += "File Selected to Process:`r`n $filepath`r`n"
+        $label1.Text = "File Selected to Process:`r`n $filepath`r`n"
         $label2.Text = "Data Files Created in: `r`n $directory"
         $txtbox.AppendText("`r`nProcessing $Filepath")
         $txtbox.AppendText("`r`nCreating datafile $datafilename")
@@ -178,7 +178,8 @@ Function Displayinfo{
 $datafile2 = Get-Content -Path $global:datafilepath
  $measurements = $datafile2 | Measure-Object -Average -Maximum -Minimum  #|Out-String
  $temptext = "Count:     $($measurements.count)`r`nAverage:  $([math]::Round($measurements.Average,2))`r`nMinimum: $($measurements.minimum)`r`nMaximum: $($measurements.Maximum)"
- $txtbox.text= "$temptext"
+ #$txtbox.text= "$temptext"
+ $txtbox.text = ""
 
 # Calculate the mean (average)
 $mean = (($datafile2 | Measure-Object -Average).Average)
@@ -197,7 +198,7 @@ $standardDeviation = [math]::Sqrt($variance)
 
 # Output the standard deviation
 write-host 'standard deviation: ' $standardDeviation
-$txtbox.AppendText("`r`nDeviation: $([math]::Round($standardDeviation,2))")
+#$txtbox.AppendText("`r`nDeviation: $([math]::Round($standardDeviation,2))")
 
 #turn on button to access data file created
 #start-sleep -Seconds 5
@@ -270,8 +271,8 @@ function finalResult{
         $localDirectory = Split-Path $filesChosen[0]
         if (-not($localDirectory -match ".\\$")) {$localDirectory = $localDirectory+'\'}
         write-host "Path to local directory: $localDirectory"
-        $testResultfilename = $fileNameWithoutExtension+' testResults.txt'
-        $global:testResultFilePath = $localDirectory+$testResultfilename
+        $testResultfilename = 'testResults.txt'
+        $global:testResultFilePath = $global:parentDirectory+$testResultfilename
         $global:averages = @()
         $global:averages = New-Object double[] 4  # Initialize array with 4 elements
         $measurementIndex = 0
@@ -337,8 +338,10 @@ function finalResult{
             Write-Host "Warning: Need exactly 4 measurement files for total annual energy calculation"
         }
     }
-    start-process explorer.exe "$global:parentDirectory"
-    start-process explorer.exe "$global:testResultFilePath"
+    if ($global:parentDirectory -and $global:testResultFilePath) {
+        start-process explorer.exe "$global:parentDirectory"
+        start-process explorer.exe "$global:testResultFilePath"
+    }
 }
 
 function totalAnnualEnergyFormula($value1, $value2, $value3, $value4){
@@ -377,7 +380,7 @@ $form = New-Object windows.forms.form
 $form.FormBorderStyle = "fixedtoolWindow"
 $form.Text = "Meter GUI Window V4"
 $form.StartPosition = "CenterScreen"
-$form.Width = 500; $form.Height = 400
+$form.Width = 520; $form.Height = 415
 
 $buttonpanel = New-Object windows.forms.panel
 $buttonpanel.Size = New-Object drawing.size @(400,40)
@@ -426,7 +429,7 @@ $finalresultbutton.add_click($finalresultonclick)
 $opendatafilebutton =  New-Object windows.forms.button
 $opendatafilebutton.top = $exitbutton.top; $opendatafilebutton.Left = $GetFilebutton.left - $exitbutton.Width - 10
 $opendatafilebutton.Height = $GetFilebutton.Height; $opendatafilebutton.Width = $GetFilebutton.width 
-$opendatafilebutton.text = "open $($global:datafilepath)"
+$opendatafilebutton.text = "open $($global:parentDirectory)"
 $opendatafilebutton.Visible = $false
 $opendatafilebutton.anchor = "Right"
 $opendatafileonclick = {Opendatafile}
@@ -452,13 +455,13 @@ $txtbox.text = "No data to display"
 $form.controls.add($txtbox)
 
 $label1 = New-Object system.windows.forms.label
-$label1.Top =10; $label1.left = 20; $label1.width = 500;$label1.Height = 30
+$label1.Top =10; $label1.left = 20; $label1.width = 500;$label1.Height = 37
 $label1.Text = "File Selected to Process: None Yet"
 $label1.Font = New-Object System.Drawing.Font($label1.Font.FontFamily, 10)
 
 #$label1.BackColor = "blue"
 $label2 = New-Object System.Windows.Forms.Label
-$label2.Top = 45; $label2.Left = 20; $label2.Width = 500; $label2.Height = 30
+$label2.Top = 45; $label2.Left = 20; $label2.Width = 500; $label2.Height = 37
 $label2.Text = "Data File Created: None Yet"
 $label2.Font = New-Object System.Drawing.Font($label2.Font.FontFamily, 10)
 $form.Controls.Add($label1) ;$form.controls.add($label2)
