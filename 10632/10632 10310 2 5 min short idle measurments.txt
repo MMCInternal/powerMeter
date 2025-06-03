@@ -1,0 +1,5 @@
+Count:     201
+Average:  43.9
+Minimum: 40.86
+Maximum: 69.83
+Deviation: 6.53

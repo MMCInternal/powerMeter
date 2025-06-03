@@ -1,0 +1,6 @@
+10310 1 off Average : 2.87
+10632 10310 2 5 min short idle Average : 43.9
+10632 10310 3 15 min long idle Average : 66.02
+10632 10310 4 30 min sleep Average : 3.44
+
+Total Annual Energy Consumption: 190.53
