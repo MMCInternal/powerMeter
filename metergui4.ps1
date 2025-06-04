@@ -31,7 +31,29 @@ if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     $selectedFiles = $OpenFileDialog.FileNames
     Write-Output "You selected: $($selectedFiles.Count) files"
     $global:e = 0
-    
+
+    $expectedFiles = @('off', 'short idle', 'long idle', 'sleep')
+    for ($i = 0; $i -lt 4; $i++) {
+        if ($null -eq $selectedFiles[$i]) {
+            Write-Host "Error: Missing $($expectedFiles[$i]) measurement file"
+            $txtbox.AppendText("`r`nError: Missing $($expectedFiles[$i]) measurement file")
+            return
+        }
+    }
+    # Sort selected files to match expected order
+    $sortedFiles = @()
+    foreach ($expectedName in $expectedFiles) {
+        $matchingFile = $selectedFiles | Where-Object { 
+            [System.IO.Path]::GetFileNameWithoutExtension($_) -like "*$expectedName*"
+        }
+        if ($matchingFile) {
+            $sortedFiles += $matchingFile
+        }
+    }
+    $selectedFiles = $sortedFiles
+    Write-Host "Files sorted in expected order:"
+    $selectedFiles | ForEach-Object { Write-Host ([System.IO.Path]::GetFileName($_)) }
+
     foreach($filePath in $selectedFiles) {
         Write-Output "Processing: $filePath"
         
@@ -62,7 +84,7 @@ if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 
         Write-Host 'directory' $directory
         Write-Host 'parent directory' $global:directory
-        Write-Host 'file no ext' $fileNameWithoutExtension
+        #Write-Host 'file no ext' $fileNameWithoutExtension
         write-host $datafilename
 
         # Update UI for current file
@@ -99,6 +121,7 @@ for ($fileIndexCounter = 0; $fileIndexCounter -lt 100; $fileIndexCounter++) {
     else {
         Write-Host "File does not exist Creating new file"
         Add-Content -Path $global:datafilepath -Value $finalnumber
+        write-host "File created: $global:datafilepath"
         break
     }
 }
@@ -110,7 +133,7 @@ $decimalFlag = 0
 $indexcounter= 0
 
 #multiple loops to parse logfile to fish out power info
-foreach ($TextLine in $logfile){ Write-host $TextLine
+foreach ($TextLine in $logfile){ #Write-host $TextLine
        #reset counters
        $indexcounter=0
        Clear-Variable -Name NumberArray
@@ -138,7 +161,7 @@ foreach ($TextLine in $logfile){ Write-host $TextLine
                 ($decimalFlag -eq 1){
                     $element2 = $element -replace '0','.'
                     $numberarray2[$indexcounter] = $element2 
-                    Write-host $element2
+                    #Write-host $element2
                     $decimalFlag = 0
                     break
                     }
@@ -202,7 +225,7 @@ $variance = $sumOfSquares / ($datafile2.Count - 1)
 $standardDeviation = [math]::Sqrt($variance)
 
 # Output the standard deviation
-write-host 'standard deviation: ' $standardDeviation
+#write-host 'standard deviation: ' $standardDeviation
 #$txtbox.AppendText("`r`nDeviation: $([math]::Round($standardDeviation,2))")
 
 #turn on button to access data file created
@@ -225,6 +248,7 @@ for ($fileIndexCounter = 0; $fileIndexCounter -lt 100; $fileIndexCounter++) {
     else {
         Write-Host "File does not exist Creating new file"
         Add-Content -Path $global:measurmentFilePath -Value $finalMeasurment
+        write-host "File created: $global:measurmentFilePath"
         break
     }
 }
@@ -265,7 +289,6 @@ function HideConsole
 function finalResult{
     # Get all measurement files from directory and sort them in required order
     $directoryString = [string]$global:directory
-    write-host get-childitem $directoryString -Recurse -File
     $measurementFiles = @(
         Get-ChildItem $directoryString -Recurse -File | Where-Object { $_.Name -match "off" -and $_.Name -match "measurments" }
         Get-ChildItem $directoryString -Recurse -File | Where-Object { $_.Name -match "short idle" -and $_.Name -match "measurments" }
@@ -310,12 +333,12 @@ function finalResult{
                 break
             }
         }
-        write-host "Path to final result file: $global:testResultFilePath"
         $fileName = $file.Name -replace '.txt', ''
         $finalResultFile = $fileName + " : " + $global:averages[$measurementIndex]
         add-content -path $global:testResultFilePath -value $finalResultFile
         $measurementIndex++
     }
+    write-host "Path to final result file: $global:testResultFilePath"
 
     # Write out the averages to the console
     write-host "Averages: $($global:averages[0]) $($global:averages[1]) $($global:averages[2]) $($global:averages[3])"
@@ -364,6 +387,7 @@ function finalResult{
             Write-Host "Warning: Test result file does not exist"
         }
     }
+    write-host "Total Annual Energy Consumption: $totalAnnualEnergy"
 }
 
 function totalAnnualEnergyFormula($value1, $value2, $value3, $value4){
