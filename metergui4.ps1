@@ -262,89 +262,85 @@ function HideConsole
 
 #Grab all overages and move them to a new file. After moving them to a new file
 function finalResult{
-    # Create file picker dialog  
-    $OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
-    $OpenFileDialog.Multiselect = $true
-    $OpenFileDialog.Filter = "Text files (*.txt)|*.txt"
-    $OpenFileDialog.Title = "Select in order. Off, Short Idle, Long Idle, Sleep."
-    $openFileDialog.InitialDirectory = $global:directory
-
-    if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-        # Init Variables
-        $filesChosen = $OpenFileDialog.FileNames
-        $localDirectory = Split-Path $filesChosen[0]
-        if (-not($localDirectory -match ".\\$")) {$localDirectory = $localDirectory+'\'}
-        write-host "Path to local directory: $localDirectory"
-        $testResultfilename = 'testResults.txt'
-        if (-not($global:directory -match ".\\$")) {
-            $global:directory = $global:directory+'\'
-        }
-        $global:testResultFilePath = $global:directory+$testResultfilename
-        $global:averages = @()
-        $global:averages = New-Object double[] 4  # Initialize array with 4 elements
-        $measurementIndex = 0
-        
-        # Delete existing test results file if it exists if it does remove it so we can replace it with the new results.
-        if (test-path $global:testResultFilePath) {
-            remove-item $global:testResultFilePath
-        }
-        # Loop through the files chosen and get the averages.
-        foreach ($file in $filesChosen) {
-            if ($measurementIndex -ge 4) {
-                Write-Host "Warning: More than 4 measurement files selected. Only first 4 will be used."
-                break
-            }
-            
-            write-host "Working on file: $file"
-            $content = Get-Content $file
-            foreach ($line in $content) {
-                if ($line -match "Average:\s*(\d+\.?\d*)") {
-                    $global:averages[$measurementIndex] = [double]$matches[1]
-                    break
-                }
-            }
-            write-host "Path to final result file: $global:testResultFilePath"
-            $fileName = Split-Path $file -Leaf
-            $fileName = $fileName -replace '.txt', ''
-            $finalResultFile = $fileName + " : " + $global:averages[$measurementIndex]
-            add-content -path $global:testResultFilePath -value $finalResultFile
-            $measurementIndex++
-        }
-        # Write out the averages to the console. Also do error checking for averages.
-        write-host "Averages: $($global:averages[0]) $($global:averages[1]) $($global:averages[2]) $($global:averages[3])"
-        if ($measurementIndex -gt 0) {
-            $totalAverage = ($global:averages[0..($measurementIndex-1)] | Measure-Object -Average).Average
-            write-host "Total average: $totalAverage"
-        } else {
-            $txtbox.AppendText("`r`nNo averages found in selected files")
-        }
-        # Check if 4 measurement files are selected
-        if ($measurementIndex -eq 4) {
-            # Add averages in specified order at top of file
-            $averagesLine = "$($global:averages[0])`t$($global:averages[3])`t$($global:averages[2])`t$($global:averages[1])"
-            Set-Content -Path $global:testResultFilePath -Value $averagesLine
-            
-            # Add the rest of the content
-            $content = Get-Content $global:testResultFilePath
-            foreach ($file in $filesChosen) {
-                $fileName = Split-Path $file -Leaf
-                $fileName = $fileName -replace '.txt', ''
-                $index = [array]::IndexOf($filesChosen, $file)
-                $finalResultFile = $fileName + " : " + $global:averages[$index]
-                Add-Content -Path $global:testResultFilePath -Value $finalResultFile
-            }
-
-            $totalAnnualEnergy = totalAnnualEnergyFormula $global:averages[0] $global:averages[1] $global:averages[2] $global:averages[3]
-            add-content -path $global:testResultFilePath -value "`nTotal Annual Energy Consumption: $totalAnnualEnergy"
-            
-            # Replace "measurments" with "Average" in the test results file
-            $content = Get-Content $global:testResultFilePath
-            $content = $content -replace "measurments", "Average"
-            Set-Content $global:testResultFilePath -Value $content
-        } else {
-            Write-Host "Warning: Need exactly 4 measurement files for total annual energy calculation"
+    # Get all measurement files from directory and sort them in required order
+    $directoryString = [string]$global:directory
+    write-host get-childitem $directoryString -Recurse -File
+    $measurementFiles = @(
+        Get-ChildItem $directoryString -Recurse -File | Where-Object { $_.Name -match "off" -and $_.Name -match "measurments" }
+        Get-ChildItem $directoryString -Recurse -File | Where-Object { $_.Name -match "short idle" -and $_.Name -match "measurments" }
+        Get-ChildItem $directoryString -Recurse -File | Where-Object { $_.Name -match "long idle" -and $_.Name -match "measurments" }
+        Get-ChildItem $directoryString -Recurse -File | Where-Object { $_.Name -match "sleep" -and $_.Name -match "measurments" }
+    )
+    Write-Host "Directory being searched: $global:directory"
+    Write-Host "Files found:"
+    $measurementFiles | ForEach-Object { Write-Host $_.FullName }
+    
+    # Verify we have all required files
+    $expectedFiles = @('off', 'short idle', 'long idle', 'sleep')
+    for ($i = 0; $i -lt 4; $i++) {
+        if ($null -eq $measurementFiles[$i]) {
+            Write-Host "Error: Missing $($expectedFiles[$i]) measurement file"
+            $txtbox.AppendText("`r`nError: Missing $($expectedFiles[$i]) measurement file")
+            return
         }
     }
+
+    # Init Variables
+    $testResultfilename = 'testResults.txt'
+    if (-not($global:directory -match ".\\$")) {
+        $global:directory = $global:directory+'\'
+    }
+    $global:testResultFilePath = $global:directory+$testResultfilename
+    $global:averages = New-Object double[] 4  # Initialize array with 4 elements
+    $measurementIndex = 0
+    
+    # Delete existing test results file if it exists
+    if (test-path $global:testResultFilePath) {
+        remove-item $global:testResultFilePath
+    }
+
+    # Process each measurement file in order
+    foreach ($file in $measurementFiles) {
+        write-host "Working on file: $($file.FullName)"
+        $content = Get-Content $file.FullName
+        foreach ($line in $content) {
+            if ($line -match "Average:\s*(\d+\.?\d*)") {
+                $global:averages[$measurementIndex] = [double]$matches[1]
+                break
+            }
+        }
+        write-host "Path to final result file: $global:testResultFilePath"
+        $fileName = $file.Name -replace '.txt', ''
+        $finalResultFile = $fileName + " : " + $global:averages[$measurementIndex]
+        add-content -path $global:testResultFilePath -value $finalResultFile
+        $measurementIndex++
+    }
+
+    # Write out the averages to the console
+    write-host "Averages: $($global:averages[0]) $($global:averages[1]) $($global:averages[2]) $($global:averages[3])"
+    $totalAverage = ($global:averages | Measure-Object -Average).Average
+    write-host "Total average: $totalAverage"
+
+    # Add averages in specified order at top of file
+    $averagesLine = "$($global:averages[0])`t$($global:averages[3])`t$($global:averages[2])`t$($global:averages[1])"
+    Set-Content -Path $global:testResultFilePath -Value $averagesLine
+    
+    # Add the rest of the content
+    foreach ($file in $measurementFiles) {
+        $fileName = $file.Name -replace '.txt', ''
+        $index = [array]::IndexOf($measurementFiles, $file)
+        $finalResultFile = $fileName + " : " + $global:averages[$index]
+        Add-Content -Path $global:testResultFilePath -Value $finalResultFile
+    }
+
+    $totalAnnualEnergy = totalAnnualEnergyFormula $global:averages[0] $global:averages[1] $global:averages[2] $global:averages[3]
+    add-content -path $global:testResultFilePath -value "`nTotal Annual Energy Consumption: $totalAnnualEnergy"
+    
+    # Replace "measurments" with "Average" in the test results file
+    $content = Get-Content $global:testResultFilePath
+    $content = $content -replace "measurments", "Average"
+    Set-Content $global:testResultFilePath -Value $content
+
     # Move all .log files to data directory
     Get-ChildItem -Path $global:directory -Filter "*.log" | ForEach-Object {
         $destinationPath = Join-Path $global:dataDir $_.Name
@@ -358,8 +354,8 @@ function finalResult{
         Move-Item -Path $_.FullName -Destination $destinationPath -Force
         Write-Host "Moved measurement file: $($_.Name) to data directory"
     }
+
     if ($global:directory -and $global:testResultFilePath) {
-        start-process explorer.exe "$global:directory"
         if (test-path $global:testResultFilePath) {
             start-process explorer.exe "$global:testResultFilePath"
         }
