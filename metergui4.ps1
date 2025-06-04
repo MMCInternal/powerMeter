@@ -18,7 +18,7 @@ public static extern bool ShowWindow(IntPtr hWnd, Int32 nCmdShow);
 $global:filepath = $null
 $global:Datafilepath = $null
 $global:directory = $null
-$global:i = 0
+$global:e = 0
 #Functions
 Function getfile{
 param ($result)
@@ -30,6 +30,7 @@ $OpenFileDialog.Filter = "Text files (*.log)|*.log"
 if ($OpenFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     $selectedFiles = $OpenFileDialog.FileNames
     Write-Output "You selected: $($selectedFiles.Count) files"
+    $global:e = 0
     
     foreach($filePath in $selectedFiles) {
         Write-Output "Processing: $filePath"
@@ -227,8 +228,8 @@ for ($fileIndexCounter = 0; $fileIndexCounter -lt 100; $fileIndexCounter++) {
         break
     }
 }
-$global:i++
-if ($global:i -eq 4){
+$global:e++
+if ($global:e -eq 4){
     finalResult
 }
 }
