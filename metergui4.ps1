@@ -235,11 +235,21 @@ Function ParseLogFile
   if ($global:filesProcessed -eq 3)
   {
     # Confirm before continuing to final calculations
-    $ButtonType = [System.Windows.Forms.MessageBoxButtons]::Ok
+    $ButtonType = [System.Windows.Forms.MessageBoxButtons]::YesNo
     $MessageBoxTitle = "Confirm"
-    $MessageBoxBody = "Click OK when ready to proceed with the calculations."
+    $MessageBoxBody = "Would you like to check the data before the calculations?"
     $MessageIcon = [System.Windows.Forms.MessageBoxIcon]::Question
-    [System.Windows.Forms.MessageBox]::Show($MessageBoxBody, $MessageBoxTitle, $ButtonType, $MessageIcon)
+    $userChoice = [System.Windows.Forms.MessageBox]::Show($MessageBoxBody, $MessageBoxTitle, $ButtonType, $MessageIcon)
+    if ($userChoice -eq [System.Windows.Forms.DialogResult]::yes)
+    {
+      
+      explorer.exe $global:dataDir
+      $ButtonType = [System.Windows.Forms.MessageBoxButtons]::Ok
+      $MessageBoxTitle = "Confirm"
+      $MessageBoxBody = "Press Ok when you are ready to proceed."
+      $MessageIcon = [System.Windows.Forms.MessageBoxIcon]::Information
+      $userChoice = [System.Windows.Forms.MessageBox]::Show($MessageBoxBody, $MessageBoxTitle, $ButtonType, $MessageIcon)
+    }
     foreach($item in $global:measureQueue.path)
     {
       if (-not($global:directory -match ".\\$"))
@@ -492,8 +502,8 @@ function totalAnnualEnergyFormula($value1, $value2, $value3, $value4)
   }
 }
 #Hide-powershell
-#HideConsole
-ShowConsole
+HideConsole
+#ShowConsole
 #Create a form
 
 add-type -AssemblyName system.windows.forms
