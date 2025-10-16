@@ -20,10 +20,7 @@ $global:Datafilepath = $null
 $global:directory = $null
 $global:e = 0
 $global:z = 0
-$global:measureQueue = New-Object PSObject
-$global:measureQueue | Add-Member -MemberType NoteProperty -Name "path" -Value @()
-$global:measureQueue | Add-Member -MemberType NoteProperty -Name "outputName" -Value @()
-$global:measureQueue | Add-Member -MemberType NoteProperty -Name "name" -Value @()
+$global:measureQueue = @()
 $global:filesProcessed = 0
 #Functions
 Function getfile
@@ -75,7 +72,6 @@ Function getfile
       $global:directory = Split-Path $filePath
       $datafilename = $fileNameWithoutExtension+' data.txt'
       $measurmentfilename = $fileNameWithoutExtension+' measurments.txt'
-      $global:measureQueue.outputName += $measurmentfilename
       $global:dataDir = Join-Path -Path $directory -ChildPath "data"
       if(!(Test-Path $global:dataDir))
       {
@@ -149,6 +145,10 @@ Function ParseLogFile
 
 
   $numberArray= @()
+  #if ($global:z -le 3)
+  #   {
+  $global:measureQueue += $global:datafilepath
+  #   }
   #$dave1 = $dave -replace "^..", ""
   $decimalFlag = 0
   $indexcounter= 0
@@ -227,27 +227,15 @@ Function ParseLogFile
       $finalnumber= $null
     }
   }
-  $global:measureQueue.path += $global:datafilepath
-  $global:measureQueue.name += $fileNameWithoutExtension
-  Write-Host "Toal Files Processed: $filesProcessed" -ForegroundColor green
-  Write-Host "Added $($global:measureQueue.path[$global:filesProcessed]) to Queue" -ForegroundColor yellow
-  Write-Host "File name without EXT: $($global:measureQueue.name[$global:filesProcessed])" -ForegroundColor yellow
+  Write-Host $filesProcessed
+  Write-Host $global:measureQueue.Count
+  Write-Host $global:measureQueue[$global:z]
   if ($global:filesProcessed -eq 3)
   {
-    # Confirm before continuing to final calculations
-    $ButtonType = [System.Windows.Forms.MessageBoxButtons]::Ok
-    $MessageBoxTitle = "Confirm"
-    $MessageBoxBody = "Click OK when ready to proceed with the calculations."
-    $MessageIcon = [System.Windows.Forms.MessageBoxIcon]::Question
-    [System.Windows.Forms.MessageBox]::Show($MessageBoxBody, $MessageBoxTitle, $ButtonType, $MessageIcon)
-    foreach($item in $global:measureQueue.path)
+    foreach($item in $global:measureQueue)
     {
-      if (-not($global:directory -match ".\\$"))
-      {
-        $global:directory = $global:directory+'\'
-      }
-      $global:measurmentFilePath = $global:directory + $($global:measureQueue.outputName[$global:z])
-      Displayinfo -currentFilePath $global:measureQueue.path[$global:z] -currentFileName $global:measureQueue.name[$global:z]
+      Displayinfo -currentFile $global:measureQueue[$global:z]
+      $global:z++
     }
   }
   $global:filesProcessed++
@@ -255,8 +243,8 @@ Function ParseLogFile
 
 Function Displayinfo
 {
-  param($currentFilePath, $currentFileName)
-  $datafile2 = Get-Content -Path $currentFilePath
+  param($currentFile)
+  $datafile2 = Get-Content -Path $currentFile
   $measurements = $datafile2 | Measure-Object -Average -Maximum -Minimum  #|Out-String
   $temptext = "Count:     $($measurements.count)`r`nAverage:  $([math]::Round($measurements.Average,2))`r`nMinimum: $($measurements.minimum)`r`nMaximum: $($measurements.Maximum)"
   #$txtbox.text= "$temptext"
@@ -294,7 +282,7 @@ Function Displayinfo
     if (Test-Path $measurmentFilePath)
     {
       Write-Host "File exists"
-      $measurmentfilename = $currentFileName + ' measurments ' + $fileIndexCounter + ' .txt'
+      $measurmentfilename = $filenamewithoutextension + ' measurments ' + $fileIndexCounter + ' .txt'
       if (-not($global:directory -match ".\\$"))
       {
         $global:directory = $global:directory+'\'
@@ -310,7 +298,6 @@ Function Displayinfo
     }
   }
   $global:e++
-  $global:z++
   if ($global:e -eq 4)
   {
     finalResult
