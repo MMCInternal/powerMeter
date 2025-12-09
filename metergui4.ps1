@@ -443,17 +443,23 @@ function finalResult
   $content = Get-Content $global:testResultFilePath
   $content = $content -replace "measurments", "Average"
   Set-Content $global:testResultFilePath -Value $content
-
+ 
+  # Check for raw data directory and create if it doesn't exist
+  $global:rawDataDir = Join-Path -Path $global:directory -ChildPath "rawData"
+  if(!(Test-Path $global:rawDataDir))
+  {
+    New-Item -ItemType Directory -Path $global:rawDataDir
+  }
   # Move all .log files to data directory
   Get-ChildItem -Path $global:directory -Filter "*.log" | ForEach-Object {
-    $destinationPath = Join-Path $global:dataDir $_.Name
+    $destinationPath = Join-Path $global:rawDataDir $_.Name
     Move-Item -Path $_.FullName -Destination $destinationPath -Force
     Write-Host "Moved log file: $($_.Name) to data directory"
   }
 
   # Move measurement files to data directory
   Get-ChildItem -Path $global:directory -Filter "*measurments*.txt" | ForEach-Object {
-    $destinationPath = Join-Path $global:dataDir $_.Name 
+    $destinationPath = Join-Path $global:rawDataDir $_.Name 
     Move-Item -Path $_.FullName -Destination $destinationPath -Force
     Write-Host "Moved measurement file: $($_.Name) to data directory"
   }
